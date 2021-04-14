@@ -1,0 +1,75 @@
+from splinter import Browser
+from bs4 import BeautifulSoup as bs
+import time
+from webdriver_manager.chrome import ChromeDriverManager
+
+
+def scrape():
+    # Splinter
+    executable_path = {'executable_path': ChromeDriverManager().install()}
+    browser = Browser('chrome', **executable_path, headless=False)
+
+    # Browser
+    url = "https://redplanetscience.com/"
+    browser.visit(url)
+
+    time.sleep(1)
+
+    # Beautiful Soup
+    html = browser.html
+    soup = bs(html, "html.parser")
+
+    # Find title and paragraph
+    title = soup.find('div', class_='content_title').get_text()
+    paragraph = soup.find('div', class_='article_teaser_body').get_text()
+
+    # JPL Mars Space Images
+    url = 'https://spaceimages-mars.com/'
+    browser.visit(url)
+    time.sleep(1)
+    soup = bs(browser.html, 'html.parser')
+    featured_image_src = soup.find_all('img')[1]["src"]
+    featured_image_url = url + featured_image_src
+
+    # Mars Facts
+    url = 'https://galaxyfacts-mars.com/'
+    browser.visit(url)
+    time.sleep(1)
+    soup = bs(browser.html, 'html.parser')
+
+    mars_df = pd.read_html(browser.html)[1]
+    mars_facts_html = mars_df.to_html()
+
+    # Mars Hemispheres
+    url = 'https://marshemispheres.com/'
+    browser.visit(url)
+    time.sleep(1)
+    soup = bs(browser.html, 'html.parser')
+
+    links = soup.find_all('a', class_='itemLink')
+
+    image_data = []
+    for l in links:
+        try:
+            browser.visit(url + l['href'])
+            time.sleep(1)
+            soup = bs(browser.html, 'html.parser')
+            hemi_title = soup.find('h2', class_='title')
+            hemi_link = soup.find('img', class_='wide-image')['src']
+            my_dict = {'title': hemi_title.get_text(), 'img_url': hemi_link}
+            image_data.append(my_dict)
+        except TypeError:
+            pass
+
+    hemisphere_image_urls = []
+
+    for element in image_data:
+        if element not in hemisphere_image_urls:
+            hemisphere_image_urls.append(element)
+
+    hemisphere_image_urls
+
+    # Close browser
+    browser.quit()
+
+    return title, paragraph, featured_image_url, mars_facts_html, hemisphere_image_urls
